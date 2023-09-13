@@ -36,12 +36,12 @@
     - block:
       - name: Copy ./files/freespace-e.ps1 to "{{ HOSTS }}"
         win_copy:
-          src: ./files/freespace-e.ps1
-          dest: C:/Temp/freespace-e.ps1
+          src: ./files/windows-freespace-e.ps1
+          dest: C:/Temp/windows-freespace-e.ps1
         register: result_copy
 
-      - name: Execute Powershell C:/Temp/freespace-e.ps1 "{{ SQLINSTANCE }}" "{{ DISKFREESPACETHRESHOLDPC }}"
-        win_command: powershell.exe -ExecutionPolicy ByPass -File C:/Temp/freespace-e.ps1 "{{ SQLINSTANCE }}" "{{ DISKFREESPACETHRESHOLDPC }}"
+      - name: Execute Powershell C:/Temp/windows-freespace-e.ps1 "{{ SQLINSTANCE }}" "{{ DISKFREESPACETHRESHOLDPC }}"
+        win_command: powershell.exe -ExecutionPolicy ByPass -File C:/Temp/windows-freespace-e.ps1 "{{ SQLINSTANCE }}" "{{ DISKFREESPACETHRESHOLDPC }}"
         register: result
         changed_when: false
               
