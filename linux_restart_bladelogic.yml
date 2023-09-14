@@ -2,6 +2,7 @@
 - name: Check if host exists in tower inventory
   gather_facts: false
   hosts: all
+  become: true
 
   tasks:
     - block:
