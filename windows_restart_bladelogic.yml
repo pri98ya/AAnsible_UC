@@ -1,7 +1,7 @@
 ---
 - name: Check if host exists in tower inventory
   gather_facts: false
-  hosts: all
+  hosts: windows
 
   tasks:
     - block:
