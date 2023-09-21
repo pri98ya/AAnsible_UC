@@ -1,0 +1,98 @@
+---
+- name: Playbook check if host exists in inventory
+  gather_facts: false
+  hosts: localhost
+  tasks:
+    - block:
+      - name: "Fail if Extra Variable {{ HOSTS }} does not exist in Ansible Tower's inventory"
+        fail:
+          msg: "{{ item }} does not exist in Ansible Tower's inventory."
+        when: "item not in groups['all']"
+        with_items: "{{HOSTS}}"
+
+      rescue:
+      - name: Failure to get host in tower inventory
+        debug:
+          msg: "SYNTBOT_OUTPUT: FAILED: This target host {{ HOSTS }} does not exist in the Ansible Tower Inventory 2L22"
+        failed_when: True
+
+- name: Playbook check if host is Windows 
+  gather_facts: false
+  hosts: "{{ HOSTS }}"
+  vars:
+    HOSTS:
+  tasks:
+    - block:
+      - name: "Fail if Variable ansible_connection is not winrm "
+        assert:
+          that:
+            - ansible_connection == "winrm"
+          msg: "Playbook is for Windows not Linux"
+
+      rescue:
+      - name: Invalid OS for this playbook
+        debug:
+          msg: "SYNTBOT_OUTPUT: FAILED: {{ HOSTS }} is a Linux cannot run this playbook"
+        failed_when: True
+        
+- name: "Playbook  Use case  INST_DB – DB Restart - INST_ABC_DB - Stop DB"
+  hosts: "{{ HOSTS }}"
+  gather_facts: false
+  vars:
+    HOSTS: 
+    SQLINSTANCE: ""
+    SQLSERVICENAME: "{{ 'MSSQLSERVER' if (not SQLINSTANCE) or (SQLINSTANCE == None) or (SQLINSTANCE == 'DEFAULT') else 'MSSQL$' + SQLINSTANCE }}"
+    OPTION:
+
+  tasks:
+    - block:
+      - name: "Check that OPTION is provided  and must be stop-start or restart"
+        assert:
+          that:
+            - OPTION | mandatory
+            - OPTION is defined
+            - OPTION == "stop" or OPTION == "restart" or OPTION == "start"
+          msg: "Parameter OPTION is not set correctly (OPTION must be stop/start or restart)"
+
+      - name: "Action: {{OPTION}} : SQLServer:{{ SQLSERVICENAME }}"
+        win_shell:
+          Stop-Service '{{ SQLSERVICENAME }}' -Force
+        when: OPTION == "stop" 
+
+      - name: "{{ SQLSERVICENAME }} SQLServer Instance Service CHECK after stop"
+        win_service:
+          name: '{{ SQLSERVICENAME }}'
+          state: stopped
+        when: OPTION == "stop" 
+        
+      - name: "{{ SQLSERVICENAME }} SQLServer Instance Service CHECK before restart"
+        win_shell:
+          Get-Service '{{ SQLSERVICENAME }}'
+        changed_when: False
+        when: OPTION == "restart" or OPTION == "start"
+          
+      - name: "{{ SQLSERVICENAME }} SQLServer Instance Service RESTART"
+        win_shell:
+          Restart-Service '{{ SQLSERVICENAME }}' -Force
+        when: OPTION == "restart" or OPTION == "start"
+      
+      - name: "{{ SQLSERVICENAME }} SQLServer Instance Service CHECK after restart"
+        win_service:
+          name: '{{ SQLSERVICENAME }}'
+          state: started
+        when: OPTION == "restart" or OPTION == "start"
+        
+
+      - name: Log output for SYNTBOT OK
+        debug:
+          msg:
+            - "SYNTBOT_OUTPUT: SUCCESSFUL: SQL Server Instance: {{ SQLSERVICENAME }} (Action: {{OPTION}}) is completed on {{ansible_host}}"
+            
+      rescue:
+      - name: Log output for SYNTBOT when failed
+        debug:
+          msg: 
+            - "SYNTBOT_OUTPUT: FAILED: SQL Server Instance: {{SQLSERVICENAME}} (Action: {{OPTION}}) failed on {{ansible_host}}"
+            - "SYNTBOT_DISPLAY: Task {{ansible_failed_task.name}} ({{ansible_failed_result.msg}})"
+        failed_when: True
+#------------------------------------------------------------------------------------------- 
