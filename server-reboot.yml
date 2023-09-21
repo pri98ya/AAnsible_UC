@@ -1,0 +1,59 @@
+---
+- name: Check if host exists in tower inventory
+  gather_facts: false
+  hosts: localhost
+  tasks:
+    - block:
+      - name: "Fail if Extra Variable {{ HOSTS }} does not exist in Ansible Tower's inventory"
+        fail:
+          msg: "{{ item }} does not exist in Ansible Tower's inventory."
+        when: "item not in groups['all']"
+        with_items: "{{HOSTS}}"
+      rescue:
+      - name: Failure to get host in tower inventory
+        debug:
+          msg: "SYNTBOT_OUTPUT : FAILED :  Task to Check if hosts exists in tower  failed on {{ HOSTS }} : Failed to find hosts in Ansible tower inventory "
+        failed_when: True
+
+- name: Playbook check if host is Windows
+  gather_facts: false
+  hosts: "{{ HOSTS }}"
+  vars:
+    HOSTS:
+  tasks:
+    - block:
+      - name: "Fail if Variable ansible_connection is not winrm "
+        assert:
+          that:
+            - ansible_connection == "winrm"
+          msg: "Playbook is for Windows not Linux"
+      rescue:
+      - name: Invalid OS for this playbook
+        debug:
+          msg: "SYNTBOT_OUTPUT: FAILED: {{ HOSTS }} is a Linux cannot run this playbook"
+        failed_when: True
+
+- name: Playbook Windows power down
+  hosts: "{{ HOSTS }}"
+  gather_facts: false
+  vars:
+    - HOSTS:
+  tasks:
+    - block:
+      - name: Rebooting server {{ HOSTS }}
+        win_reboot: 
+          reboot_timeout: 1800
+        # Maximum seconds to wait for machine to re-appear on the network and respond to a test command.
+        # This timeout is evaluated separately for both reboot verification and test command success so maximum clock time is actually twice this value.
+        register: server_reboot
+
+      - name: Log output for SYNTBOT 
+        debug:
+          msg: "SYNTBOT_OUTPUT : SUCCESSFUL : {{ HOSTS }} has been rebooted in {{ server_reboot.elapsed }}s"
+
+      rescue:
+      - name: Log output for SYNTBOT when failed
+        debug:
+          msg:
+             - "SYNTBOT_OUTPUT : FAILED :  Task {{ ansible_failed_task.name}} failed on {{ HOSTS }}"
+        failed_when: True
