@@ -1,0 +1,123 @@
+---
+- name: Check if host exists in tower inventory
+  gather_facts: false
+  hosts: localhost
+  tasks:
+    - block:
+      - name: "Fail if Extra Variable {{ HOSTS }} does not exist in Ansible Tower's inventory"
+        fail:
+          msg: "{{ item }} does not exist in Ansible Tower's inventory."
+        when: "item not in groups['all']" 
+        with_items: "{{HOSTS}}"
+
+      rescue:
+      - name: Failure to get host in tower inventory
+        debug:
+          msg: 
+            - "SYNTBOT_OUTPUT: FAILED: This server {{HOSTS}} does not exist in th inventory 2L22"
+        failed_when: True
+#------------------------------------------------------------------------------------------------
+#Check Port 5985
+- name: Playbook Windows is Alive Port 5985
+  hosts: "{{ HOSTS }}"
+  gather_facts: false
+  vars:
+    - HOSTS:
+  tasks:
+    - block:
+      - name: Check if port 5985 is available
+        wait_for:
+          host: "{{ inventory_hostname }}"
+          port: 5985
+          connect_timeout: 2
+          timeout: 2
+        delegate_to: localhost
+
+      - name: Gathering facts
+        setup:
+
+      #- name: Log output for SYNTBOT
+        #debug:
+          #msg:
+            #- "SYNTBOT_OUTPUT: SUCCESSFUL: {{ ansible_host }} is up "
+
+      rescue:
+      - name: Log output for SYNTBOT
+        debug:
+          msg:
+            - "SYNTBOT_OUTPUT: FAILED: Task {{ ansible_failed_task.name}} failed {{ ansible_failed_result.msg }}"
+        failed_when: True
+#------------------------------------------------------------------------------------------------
+- name: Playbook Deploy windows patching Use case Patching windows
+  gather_facts: false
+  hosts: "{{ HOSTS }}"
+  vars:
+    HOSTS:
+    code_var:
+      - "|9001| Patching FAILED : Generic Failure"
+      - "|9101| Patching FAILED : Script is not running under administrator User"
+      - "|9201| Patching FAILED : TS Not Found"
+      - "|9202| Patching FAILED : Failed to start TS"
+
+  tasks:
+    - block:
+
+      - name: pick up the lines we are interested in.
+        set_fact:
+          important_lines: "{{ important_lines|default([]) +  [item] }}"
+        when: item.split('|') 
+        with_items:
+          - "{{code_var}}"
+
+      - name: Create directory C:\Temp\manualpatch if does not exists
+        win_file:
+          path: C:\Temp\manualpatch
+          state: directory
+
+      - name: Copy script Invoke-SCCMPatching.ps1 on "{{HOSTS}}"
+        win_copy:
+          src: "{{item}}"
+          dest: C:\Temp\manualpatch\
+        with_items:
+          - files/Invoke-SCCMPatching.ps1
+          - files/smsclictr.automation.dll
+          
+
+      - name: RUN Powershell Invoke-SCCMPatching.ps1 on host {{HOSTS}}
+        win_command: powershell.exe -ExecutionPolicy ByPass -File C:\Temp\manualpatch\Invoke-SCCMPatching.ps1
+        register: result
+       
+      - name: Log output for SYNTBOT when successful
+        debug:
+          msg:
+           - "SYNTBOT_OUTPUT: SUCCESSFUL: Deploy Patching Windows on {{HOSTS}}"
+
+      rescue:
+       - name: set fact
+         set_fact: 
+           ERROR_CODE: "{{ result.rc }}"
+
+       - name: find the line with the name we are looking for in 2nd column
+         set_fact:
+           target_line: "{{ item }}"
+         when: item|trim is search(ERROR_CODE)
+         with_items:
+           - "{{ important_lines }}"
+
+       - name: get the attributes from the target line
+         set_fact:
+           attribute: "{{ target_line.split('|')[2]|trim }}"
+
+       - name: Log output for SYNTBOT when failed
+         debug:
+           msg:
+            - "SYNTBOT_OUTPUT: FAILED: Task {{ansible_failed_task.name}} failed : {{ansible_failed_result.msg}}"
+            - "SYNTBOT_DISPLAY: error_code:{{ ERROR_CODE }} , {{ attribute }}"
+         failed_when: True
+
+      #always:
+       #- name: Delete files on "{{ HOSTS }}"
+         #win_shell: rmdir /S /Q "c:/temp/manualpatch"
+         #args:
+           #executable: cmd.exe
+#-----------------------------------------------------------------------------------
