@@ -1,0 +1,173 @@
+---
+- name: Playbook - Check if host exists in tower inventory
+  gather_facts: false
+  hosts: localhost
+
+  tasks:
+    - block:
+      - name: "Fail if {{HOSTS}} does not exist in Ansible Tower's inventory 2L22 (114)"
+        fail:
+          msg: "{{ item }} does not exist in Ansible Tower's inventory."
+        when: "item not in groups['all']"
+        with_items: "{{HOSTS}}"
+
+      rescue:
+      - name: Failure to get host in tower inventory
+        debug:
+          msg: "SYNTBOT_OUTPUT: FAILED: This target host {{HOSTS}} does not exist in Tower Ansible Inventory 2L22"
+        failed_when: True
+#---------------------------------------------------------------------------------------------
+- name: Playbook usecase DB-RESTART 03/07/2020
+  gather_facts: true
+  hosts: "{{HOSTS}}"
+  become: true
+  vars:
+   HOSTS:
+   ORACLE_SID:
+   OPTION:
+
+  tasks:
+    - block:
+
+      - name: Check that ORACLE_SID is provided and must be string
+        assert:
+          that: 
+            - ORACLE_SID | mandatory
+            - ORACLE_SID is defined
+            - ORACLE_SID is string
+            - OPTION | mandatory
+            - OPTION is defined
+            - OPTION == "stop" or OPTION == "restart" or OPTION == "start"
+          msg: "Parameter ORACLE_SID or OPTION is not set correctly (OPTION must be stop/start or restart)"
+
+      - name: Check if /etc/oratab exist on {{HOSTS}}
+        stat: 
+          path: /etc/oratab
+        register: oratab
+
+      - name: Fail if /etc/oratab does not exist on {{HOSTS}}
+        fail: 
+          msg: "/etc/oratab does not exist"
+        when: oratab.stat.exists == false
+
+      - name: Get all instances ORACLE_SID from /etc/oratab on {{HOSTS}}
+        shell: "cat /etc/oratab|grep -v ^#|grep ^[A-Z]|cut -d: -f1"
+        register: ora_sid
+
+      - name: Check if oracle_sid:{{ORACLE_SID}} exist on {{HOSTS}}
+        assert:
+          that: "ORACLE_SID in ora_sid.stdout"
+          msg: "ORACLE_SID:{{ORACLE_SID}} does not exist on {{HOSTS}}"
+
+      - name: Check if path /home/oracle/tools/bin/ostd_start_dg exist on {{HOSTS}}
+        stat:
+          path: /home/oracle/tools/bin/ostd_start_dg
+        register: ostd_start_dg
+
+      - name: OSTD_START is /home/oracle/tools/bin/ostd_start_dg
+        set_fact: OSTD_START=/home/oracle/tools/bin/ostd_start_dg
+        when: ostd_start_dg.stat.exists == True
+
+      - name: Check if path /local/home/oracle/tools/bin/ostd_start_dg exist on {{HOSTS}}
+        stat:
+          path: /local/home/oracle/tools/bin/ostd_start_dg
+        register: local_ostd_start_dg
+        when: ostd_start_dg.stat.exists == false
+
+      - name: OSTD_START is /local/home/oracle/tools/bin/ostd_start_dg
+        set_fact: OSTD_START=/local/home/oracle/tools/bin/ostd_start_dg
+        when: ostd_start_dg.stat.exists == false and local_ostd_start_dg.stat.exists == True
+
+      - name: Copy ostd_start_dg when /home/oracle/tools/bin/ostd_start_dg or /local/home/oracle/tools/bin/ostd_start_dg does not exist
+        copy:
+          src: "{{ item.src }}"
+          dest: "{{ item.dest }}"
+          mode: 0775
+          owner: oracle
+          group: dba
+          force: yes
+        with_items:
+          - { src: 'files/ostd_start_dg',dest: '/tmp/ostd_start_dg'}
+        when: ostd_start_dg.stat.exists == false and local_ostd_start_dg.stat.exists == false 
+
+      - name: OSTD_START is /tmp/ostd_start_dg
+        set_fact: OSTD_START=/tmp/ostd_start_dg
+        when: ostd_start_dg.stat.exists == false and local_ostd_start_dg.stat.exists == false 
+#-------------------------------------------------------------------------------------------------------------
+      - name: Check if path /home/oracle/tools/bin/ostd_shut exist on {{HOSTS}}
+        stat:
+          path: /home/oracle/tools/bin/ostd_shut
+        register: ostd_shut
+
+      - name: OSTD_SHUT is /home/oracle/tools/bin/ostd_shut
+        set_fact: OSTD_SHUT=/home/oracle/tools/bin/ostd_shut
+        when: ostd_shut.stat.exists == True
+
+      - name: Check if path /local/home/oracle/tools/bin/ostd_shut exist on {{HOSTS}}
+        stat:
+          path: /local/home/oracle/tools/bin/ostd_shut
+        register: local_ostd_shut
+        when: ostd_shut.stat.exists == false
+
+      - name: OSTD_SHUT is /local/home/oracle/tools/bin/ostd_shut
+        set_fact: OSTD_SHUT=/local/home/oracle/tools/bin/ostd_shut
+        when: ostd_shut.stat.exists == false and local_ostd_shut.stat.exists == True
+
+      - name: Fail if /home/oracle/tools/bin/ostd_shut or /local/home/oracle/tools/bin/ostd_shut does not exist
+        fail:
+          msg: "/home/oracle/tools/bin/ostd_shut or /local/home/oracle/tools/bin/ostd_shut does not exist"
+        when: ostd_shut.stat.exists == false and local_ostd_shut.stat.exists == false 
+#-------------------------------------------------------------------------------------------------------------
+      - name: Execute DB Shut {{OSTD_SHUT}} -s {{ORACLE_SID}} on {{HOSTS}}
+        become_user: oracle
+        become: true
+        shell: ". $HOME/.profile && {{OSTD_SHUT}} -s {{ORACLE_SID}}"
+        when: OPTION == "stop" or OPTION == "restart" or OPTION == "start"
+        register: db_shut
+
+      - name: Check if database {{ORACLE_SID}} is stopped on {{HOSTS}}
+        shell: ps -ef |grep -v grep |grep pmon_{{ORACLE_SID}}
+        ignore_errors: true
+        when: OPTION == "stop" or OPTION == "restart" or OPTION == "start"
+        register: check_db_shut
+
+      - name: Fail when process pmon_{{ORACLE_SID}} exist
+        fail:
+          msg: "Process pmon_{{ORACLE_SID}} exist"
+        when: check_db_shut.rc == 0
+ 
+      - name: Execute DB Start {{OSTD_START}} -s {{ORACLE_SID}} on {{HOSTS}}
+        become_user: oracle
+        become: true
+        shell: ". $HOME/.profile && {{OSTD_START}} -s {{ORACLE_SID}}"
+        when: OPTION == "restart" or OPTION == "start"
+        register: db_start
+
+      - name: Check if database {{ORACLE_SID}} is started on {{HOSTS}}
+        shell: ps -ef |grep -v grep |grep pmon_{{ORACLE_SID}}
+        when: OPTION == "restart" or OPTION == "start"
+        register: check_db_start
+         
+#-------------------------------------------------------------------------------------------
+      - name: Log output for SYNTBOT OK
+        debug:
+          msg:
+           - "SYNTBOT_OUTPUT: SUCCESSFUL: Instance: {{ORACLE_SID}} (Action: {{OPTION}}) is completed on {{ansible_host}}"
+
+      rescue:
+
+      - name: Log output for SYNTBOT when failed
+        debug:
+          msg:
+            - "SYNTBOT_OUTPUT: FAILED: Instance: {{ORACLE_SID}} (Action: {{OPTION}}) failed on {{ansible_host}}" 
+            - "SYNTBOT_DISPLAY: Task {{ansible_failed_task.name}} ({{ansible_failed_result.msg}})"
+        failed_when: True
+
+      always:
+      - name: Delete files on {{HOSTS}}
+        file:
+          path: "{{ item }}"
+          state: absent
+        with_items:
+          - /tmp/ostd_start_dg
+#-------------------------------------------------------------------------------------------
