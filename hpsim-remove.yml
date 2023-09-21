@@ -1,0 +1,97 @@
+---
+- name: Remove machine from HPSIM monitoring
+  gather_facts: false
+  hosts: "fr0-vsiaas-9410.eu-v.airbus-v.corp"
+  vars:
+    HOSTS: 
+    THISHOST: fr0-vsiaas-9410.eu-v.airbus-v.corp
+
+  tasks:
+    - block:
+      - name: Copy ./files/hpsim-remove.ps1 to {{ THISHOST }}
+        win_copy:
+          src: ./files/hpsim-remove.ps1
+          dest: C:/Temp/hpsim-remove.ps1
+        register: result_copy
+
+      - set_fact: Copy1IsOK="ok"
+      
+      - name: Execute Powershell C:/Temp/hpsim-remove.ps1 "{{ HOSTS }}"
+        win_command: powershell.exe -ExecutionPolicy ByPass -File C:/Temp/hpsim-remove.ps1 "{{ HOSTS }}"
+        register: result
+
+      - name: Log output for SYNTBOT when successfull
+        debug:
+          msg:
+           - "SYNTBOT_OUTPUT: SUCCESSFUL - {{ HOSTS }} has been removed from HPSIM"
+
+      - set_fact: Play1IsOK="yes"
+      
+      rescue:
+        - set_fact: Play1IsFAILED="yes"
+        
+        - name: Play1 Failed
+          debug:
+            msg: 
+              - "hpsim remove {{ HOSTS }} from {{ THISHOST }} not completed"
+          failed_when: false 
+
+      always:
+        - name: remove  file
+          win_file:
+            path: C:\Temp\hpsim-remove.ps1
+            state: absent
+
+
+- name: Remove machine from HPSIM monitoring
+  gather_facts: false
+  hosts: fr0-vsiaas-9411.eu-v.airbus-v.corp
+  vars:
+    HOSTS: 
+    THISHOST: fr0-vsiaas-9411.eu-v.airbus-v.corp
+
+  tasks:
+    - block:
+      - name: Play2 exit when Play1 was OK
+        meta: end_play
+        when:  hostvars['fr0-vsiaas-9410.eu-v.airbus-v.corp']['Play1IsOK'] is defined
+        
+      - name: Copy ./files/hpsim-remove.ps1 to {{ THISHOST }}
+        win_copy:
+          src: ./files/hpsim-remove.ps1
+          dest: C:/Temp/hpsim-remove.ps1
+        register: result_copy
+
+      - set_fact: Copy2IsOK="ok"
+      
+      - name: Execute Powershell C:/Temp/hpsim-remove.ps1 "{{ HOSTS }}"
+        win_command: powershell.exe -ExecutionPolicy ByPass -File C:/Temp/hpsim-remove.ps1 "{{ HOSTS }}"
+        register: result
+
+      - name: Log output for SYNTBOT when successfull
+        debug:
+          msg:
+           - "SYNTBOT_OUTPUT: SUCCESSFUL - {{ HOSTS }} has been removed from HPSIM"
+
+      rescue:
+        - name: Rescue script copy failure
+          debug:
+            msg: 
+              - "SYNTBOT_OUTPUT: FAILED - Task {{ ansible_failed_task.name}} failed on {{ HOSTS }} : {{ ansible_failed_result.msg }}"
+              - "SYNTBOT_DISPLAY: SCRIPT COPY FAILED"
+          when: Copy2IsOK is not defined
+          failed_when: true
+        
+        - name: Rescue script execution failure
+          debug:
+            msg: 
+              - "SYNTBOT_OUTPUT: FAILED - Task {{ ansible_failed_task.name}} failed on {{ HOSTS }} : {{ ansible_failed_result.msg }}"
+              - "SYNTBOT_DISPLAY: {{ result.stdout | replace('\r','')|replace('\n','') | trim }}"
+          when: result is defined
+          failed_when: true
+        
+      always:
+        - name: remove  file
+          win_file:
+            path: C:\Temp\hpsim-remove.ps1
+            state: absent
