@@ -1,0 +1,89 @@
+---
+- name: Check if host exists in tower inventory
+  gather_facts: false
+  hosts: localhost
+
+  tasks:
+    - block:
+      - name: "Fail if Extra Variable {{ HOSTS }} does not exist in Ansible Tower's inventory"
+        fail:
+          msg: "{{ item }} does not exist in Ansible Tower's inventory."
+        when: "item not in groups['all']"
+        with_items: "{{HOSTS}}"
+
+      rescue:
+      - name: Failure to get host in tower inventory
+        debug:
+          msg: "SYNTBOT_OUTPUT: FAILED :  This target host {{ HOSTS }} does not exist in Tower Ansible Inventory 2L22"
+        failed_when: True
+#------------------------------------------------------------------------------------------
+- name: Playbook Deploy System Patch Linux 
+  gather_facts: true
+  hosts: "{{ HOSTS }}"
+  become: true
+  vars:
+   HOSTS:
+
+  tasks:
+    - block:
+         
+      - name: Check Redhat version must be > 5
+        fail:  
+          msg:
+            - 'Redhat version must be > 5'
+            - 'This server is {{ansible_distribution}} : {{ansible_distribution_major_version}}'
+        when: ansible_distribution == "RedHat" and ansible_distribution_major_version < '6'
+
+      - name: Check if file /local/opt/ABC/Update/apply_errata_sat6.sh exist
+        stat:  
+          path: /local/opt/ABC/Update/apply_errata_sat6.sh
+        register: FileSAT6
+
+      - name: Check if file /local/opt/ABC/Update/apply_errata.sh exist
+        stat:  
+          path: /local/opt/ABC/Update/apply_errata.sh
+        register: FileABC
+
+      - name: Check if file /local/opt/insure/Update/apply_errata.sh exist
+        stat:  
+          path: /local/opt/insure/Update/apply_errata.sh
+        register: FileINSURE
+
+      - name: Execute script /local/opt/ABC/Update/apply_errata_sat6.sh on "{{ HOSTS }}"
+        shell: /local/opt/ABC/Update/apply_errata_sat6.sh -y
+        register: FileSAT6_result
+        when: FileSAT6.stat.exists == True
+
+      - name: Execute script /local/opt/ABC/Update/apply_errata.sh on "{{ HOSTS }}"
+        shell: /local/opt/ABC/Update/apply_errata.sh -y
+        register: FileABC_result
+        when: FileABC.stat.exists == True and FileSAT6.stat.exists == False
+
+      - name: Execute script /local/opt/insure/Update/apply_errata.sh on "{{ HOSTS }}"
+        shell: /local/opt/insure/Update/apply_errata.sh -y
+        register: FileINSURE_result
+        when: FileABC.stat.exists == false and FileINSURE.stat.exists == true and FileSAT6.stat.exists == False
+
+      - name: Fail if not apply_errata files exist
+        fail:
+          msg: "Script /local/opt/ABC/Update/apply_errata.sh, /local/opt/ABC/Update/apply_errata_sat6.sh or /local/opt/insure/Update/apply_errata.sh does not exist"
+        when: FileABC.stat.exists == False and FileINSURE.stat.exists == False and FileSAT6.stat.exists == False
+
+      #- name: Rebooting {{HOSTS}}, waiting for 600s max
+        #reboot:
+          #reboot_timeout: 600
+        #become: true
+        #register: server_reboot
+
+      - name: Log output for SYNTBOT OK
+        debug:
+          msg: 
+            - "SYNTBOT_OUTPUT: SUCCESSFUL: Deploy System Patch Insure on {{ansible_host}}"
+            - "SYNTBOT_DISPLAY: {{ HOSTS }} no reboot after patching"
+
+      rescue:
+      - name: Log output for SYNTBOT when failed
+        debug:
+          msg:
+            - "SYNTBOT_OUTPUT: FAILED: Task {{ansible_failed_task.name}} failed on {{HOSTS}} : {{ansible_failed_result.msg | default('')}}"
+        failed_when: True
