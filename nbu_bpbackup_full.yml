@@ -1,0 +1,113 @@
+---
+- name: Playbook check if host exists in inventory
+  gather_facts: false
+  hosts: localhost
+
+  tasks:
+    - block:
+      - name: "Fail if Extra Variable {{MASTER}} does not exist in Ansible Tower's inventory"
+        fail:
+          msg: "{{ item }} does not exist in Ansible Tower's inventory."
+        when: "item not in groups['all']"
+        with_items: "{{MASTER}}"
+
+      rescue:
+      - name: Failure to get host in tower inventory
+        debug:
+          msg: "SYNTBOT_OUTPUT: FAILED: This target host {{MASTER}} does not exist in the Ansible Tower Inventory 2L22"
+        failed_when: True
+#------------------------------------------------------------------------------------------------
+- name: Playbook Netbackup run bpbackup
+  hosts: "{{ MASTER }}"
+  gather_facts: true
+  vars:
+    MASTER: 
+    POLICY: 
+    SCHEDULE: 
+    HRD_T_NAME: 
+    CLIENT_NAME: "{{ HRD_T_NAME }}"
+    HRD_T_NAME_short: "{{ HRD_T_NAME.split('.')[0] }}"
+    # for regex
+    L_is_short: "{{HRD_T_NAME_short}}\\n"
+    W_is_short: "{{HRD_T_NAME_short}}\\r\\n"
+    NBU_MASTER: "fr0-nbumtr-p03.eu.airbus.corp de0-nbumtr-p01.eu.airbus.corp nbumtr1.eu.airbus.corp de0-ecnbu-p01.eu.airbus.corp de0-iaasnbu-p01.eu.airbus.corp fr0-iaasnbu-p01.eu.airbus.corp"
+
+  tasks:
+    - block:
+
+      - name: Check if POLICY / SCHEDULE / HRD_T_NAME are provided
+        assert:
+          that:
+            - POLICY | mandatory
+            - POLICY is defined
+            - SCHEDULE | mandatory| mandatory
+            - SCHEDULE is defined
+            - HRD_T_NAME | mandatory
+            - HRD_T_NAME is defined
+          msg: "Parameter POLICY or SCHEDULE or HRD_T_NAME is missing "
+             
+      - name: Determine OS (Windows or RedHat)
+        debug:
+          msg: "{{ansible_os_family}}" 
+
+      - set_fact: MasterOS={{ansible_os_family}}
+
+      - name: Exit failed if OS is not Windows or RedHat
+        assert:
+          that:
+            - MasterOS == "Windows" or MasterOS == "RedHat"
+          msg: "NBU Master server must be Windows or RedHat"
+
+      - name: Check if this target {{MASTER}} is Netbackup master server
+        fail:
+          msg: "{{MASTER}} is not a Netbackup master server"
+        when: MASTER is not in NBU_MASTER
+
+      - name: Check SCHEDULE {{SCHEDULE}} is provided on {{MASTER}}
+        assert:
+          that:
+            - SCHEDULE is defined
+            - SCHEDULE | mandatory
+          msg: "Please provide SCHEDULE"
+          
+      - name: Linux check if {{POLICY}} exists on {{MASTER}}
+        become: true
+        command: /usr/openv/netbackup/bin/admincmd/bpplclients {{POLICY}} 
+        register: LCLIENTS
+        when: MasterOS == "RedHat"
+
+      - name: Windows check if {{POLICY}} exists on {{MASTER}}
+        win_command: D:\Veritas\Netbackup\bin\admincmd\bpplclients.exe {{ POLICY }}
+        register: WCLIENTS
+        when: MasterOS == "Windows"
+
+      - name: Linux use short name if {{HRD_T_NAME_short}} belongs to {{POLICY}}
+        set_fact:
+          CLIENT_NAME: "{{HRD_T_NAME_short}}"
+        when: MasterOS == "RedHat" and LCLIENTS.stdout is regex(L_is_short)
+
+      - name: Windows use short name if {{HRD_T_NAME_short}} belongs to {{POLICY}}
+        set_fact:
+          CLIENT_NAME: "{{HRD_T_NAME_short}}"
+        when: MasterOS == "Windows" and  WCLIENTS.stdout is regex(W_is_short)
+
+      - name: "Linux run bpbackup on {{MASTER}} for {{CLIENT_NAME}}"
+        become: true
+        command: /usr/openv/netbackup/bin/bpbackup -i -w -p {{POLICY}} -s {{SCHEDULE}} -h {{CLIENT_NAME}}
+        when: MasterOS == "RedHat"
+
+      - name: "Windows run bpbackup on {{MASTER}} for {{CLIENT_NAME}}"
+        win_command: D:\Veritas\Netbackup\bin\bpbackup -i -w -p {{POLICY}} -s {{SCHEDULE}} -h {{CLIENT_NAME}}
+        when: MasterOS == "Windows"
+
+      - name: Log output for SYNTBOT SUCCESSFUL
+        debug:
+          msg:
+            - "SYNTBOT_OUTPUT: SUCCESSFUL: bpbackup -i -w -p {{POLICY}} -s {{SCHEDULE}} -h {{CLIENT_NAME}} (on NBU master {{MasterOS}}: {{ansible_host}})"
+
+      rescue:
+      - name: Log output for SYNTBOT Failed
+        debug:
+          msg: "SYNTBOT_OUTPUT: FAILED: Task {{ansible_failed_task.name}} failed ({{ansible_failed_result.msg}})"
+        failed_when: True
+#-------------------------------------------------------------------------------------------------
