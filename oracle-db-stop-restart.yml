@@ -1,7 +1,7 @@
 ---
 - name: Playbook - Check if host exists in tower inventory
   gather_facts: false
-  hosts: localhost
+  hosts: 3.109.212.185
 
   tasks:
     - block:
