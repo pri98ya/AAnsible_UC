@@ -1,7 +1,7 @@
 ---
 - name: Check if host exists in tower inventory
   gather_facts: false
-  hosts: 13.233.97.32
+  hosts: all
 
   tasks:
     - block:
