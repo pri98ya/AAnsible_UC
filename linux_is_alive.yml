@@ -1,22 +1,23 @@
 ---
+---
 - name: Playbook Linux ping fail
-  hosts: "{{ HOSTS }}"
+  hosts: localhost
   gather_facts: false
   vars:
-    - HOSTS: 3.110.208.49
+    - HOSTS: 54.173.199.202
   tasks:
     - block:
       - name: "Check if host is available on port SSH (22)"
         wait_for:
-          host: 3.110.208.49
+          host: 54.173.199.202
           port: 22
           connect_timeout: 2
           timeout: 2
           msg: "Fail to connect on port ssh(22) please check if service is running on {{ inventory_hostname }}"
         delegate_to: localhost
-      - name: Gathering facts 
-        become: true
+
       - name: Gather facts
+        become: true
         setup:
       - name: Display the user Ansible became
         debug:
@@ -48,6 +49,7 @@
           msg:
             - "SYNTBOT_OUTPUT: FAILED: Task {{ ansible_failed_task.name}} failed"
         failed_when: True
+
 # # - name: Check if host exists in tower inventory
 # #   gather_facts: false
 # #   hosts: localhost
