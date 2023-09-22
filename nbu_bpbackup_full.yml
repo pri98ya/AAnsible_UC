@@ -30,8 +30,8 @@
     # for regex
     L_is_short: "{{HRD_T_NAME_short}}\\n"
     W_is_short: "{{HRD_T_NAME_short}}\\r\\n"
-    NBU_MASTER: "fr0-nbumtr-p03.eu.airbus.corp de0-nbumtr-p01.eu.airbus.corp nbumtr1.eu.airbus.corp de0-ecnbu-p01.eu.airbus.corp de0-iaasnbu-p01.eu.airbus.corp fr0-iaasnbu-p01.eu.airbus.corp"
-
+    #NBU_MASTER: "fr0-nbumtr-p03.eu.airbus.corp de0-nbumtr-p01.eu.airbus.corp nbumtr1.eu.airbus.corp de0-ecnbu-p01.eu.airbus.corp de0-iaasnbu-p01.eu.airbus.corp fr0-iaasnbu-p01.eu.airbus.corp"
+    NBU_MASTER: "43.205.198.138"
   tasks:
     - block:
 
