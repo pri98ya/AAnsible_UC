@@ -1,10 +1,10 @@
 ---
 - name: Remove machine from HPSIM monitoring
   gather_facts: false
-  hosts: "fr0-vsiaas-9410.eu-v.airbus-v.corp"
+  hosts: 43.205.198.138
   vars:
     HOSTS: 
-    THISHOST: fr0-vsiaas-9410.eu-v.airbus-v.corp
+    THISHOST: 43.205.198.138
 
   tasks:
     - block:
@@ -45,16 +45,16 @@
 
 - name: Remove machine from HPSIM monitoring
   gather_facts: false
-  hosts: fr0-vsiaas-9411.eu-v.airbus-v.corp
+  hosts: 43.205.198.138
   vars:
     HOSTS: 
-    THISHOST: fr0-vsiaas-9411.eu-v.airbus-v.corp
+    THISHOST: 43.205.198.138
 
   tasks:
     - block:
       - name: Play2 exit when Play1 was OK
         meta: end_play
-        when:  hostvars['fr0-vsiaas-9410.eu-v.airbus-v.corp']['Play1IsOK'] is defined
+        when:  hostvars['43.205.198.138']['Play1IsOK'] is defined
         
       - name: Copy ./files/hpsim-remove.ps1 to {{ THISHOST }}
         win_copy:
