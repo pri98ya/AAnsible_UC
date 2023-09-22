@@ -22,7 +22,7 @@
   hosts: "{{HOSTS}}"
   become: true
   vars:
-   HOSTS: "43.205.198.138"
+   HOSTS: "3.109.212.185"
    ORACLE_SID:
    OPTION: "start"
 
