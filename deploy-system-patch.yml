@@ -22,7 +22,7 @@
   hosts: "{{ HOSTS }}"
   become: true
   vars:
-   HOSTS:
+   HOSTS: "3.109.212.185"
 
   tasks:
     - block:
