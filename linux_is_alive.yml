@@ -1,30 +1,30 @@
 ---
-- name: Check if host exists in tower inventory
-  gather_facts: false
-  hosts: localhost
-  tasks:
-    - block:
-      - name: "Fail if Extra Variable {{ HOSTS }} does not exist in Ansible Tower's inventory"
-        fail:
-          msg: "{{ item }} does not exist in Ansible Tower's inventory."
-        when: "item not in groups['all']" 
-        with_items: "{{HOSTS}}"
-      rescue:
-      - name: Failure to get host in tower inventory
-        debug:
-          msg: "SYNTBOT_OUTPUT: FAILED:  Task to Check if hosts exists in tower  failed on {{ HOSTS }}: Failed to find hosts in Ansible tower inventory "
-        failed_when: True
+# - name: Check if host exists in tower inventory
+#   gather_facts: false
+#   hosts: localhost
+#   tasks:
+#     - block:
+#       - name: "Fail if Extra Variable {{ HOSTS }} does not exist in Ansible Tower's inventory"
+#         fail:
+#           msg: "{{ item }} does not exist in Ansible Tower's inventory."
+#         when: "item not in groups['all']" 
+#         with_items: "{{HOSTS}}"
+#       rescue:
+#       - name: Failure to get host in tower inventory
+#         debug:
+#           msg: "SYNTBOT_OUTPUT: FAILED:  Task to Check if hosts exists in tower  failed on {{ HOSTS }}: Failed to find hosts in Ansible tower inventory "
+#         failed_when: True
 
 - name: Playbook Linux ping fail
   hosts: "{{ HOSTS }}"
   gather_facts: false
   vars:
-    - HOSTS:
+    - HOSTS: 3.110.208.49
   tasks:
     - block:
       - name: "Check if host is available on port SSH (22)"
         wait_for:
-          host: "{{ inventory_hostname }}"
+          host: 3.110.208.49
           port: 22
           connect_timeout: 2
           timeout: 2
@@ -34,7 +34,18 @@
       - name: Gathering facts 
         become: true
         become_user: ec2-user
-        #become_method: sudo
+      - name: Gather facts
+        setup:
+      - name: Display the user Ansible became
+        debug:
+          var: ansible_user
+      - name: Check if /tmp directory exists
+        stat:
+          path: /tmp
+        register: tmp_dir
+      - name: Display information about /tmp directory
+        debug:
+          var: tmp_dir
         setup:
 
       - name: Log output for SYNTBOT
