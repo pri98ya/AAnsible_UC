@@ -1,20 +1,4 @@
 ---
-# - name: Check if host exists in tower inventory
-#   gather_facts: false
-#   hosts: localhost
-#   tasks:
-#     - block:
-#       - name: "Fail if Extra Variable {{ HOSTS }} does not exist in Ansible Tower's inventory"
-#         fail:
-#           msg: "{{ item }} does not exist in Ansible Tower's inventory."
-#         when: "item not in groups['all']" 
-#         with_items: "{{HOSTS}}"
-#       rescue:
-#       - name: Failure to get host in tower inventory
-#         debug:
-#           msg: "SYNTBOT_OUTPUT: FAILED:  Task to Check if hosts exists in tower  failed on {{ HOSTS }}: Failed to find hosts in Ansible tower inventory "
-#         failed_when: True
-
 - name: Playbook Linux ping fail
   hosts: "{{ HOSTS }}"
   gather_facts: false
@@ -30,10 +14,8 @@
           timeout: 2
           msg: "Fail to connect on port ssh(22) please check if service is running on {{ inventory_hostname }}"
         delegate_to: localhost
-
       - name: Gathering facts 
         become: true
-        become_user: ec2-user
       - name: Gather facts
         setup:
       - name: Display the user Ansible became
@@ -46,13 +28,12 @@
       - name: Display information about /tmp directory
         debug:
           var: tmp_dir
-        setup:
 
-      - name: Log output for SYNTBOT
-        debug:
-          msg:
-            - "SYNTBOT_OUTPUT: SUCCESSFUL: {{ ansible_host }} is up "
-            - "SYNTBOT_DISPLAY: server reboot: {{ '%Y-%m-%d %H:%M %Z' | strftime( ( ansible_date_time.epoch | int ) - ( ansible_uptime_seconds | int )  ) }} server time: {{ '%Y-%m-%d %H:%M %Z' | strftime( ( ansible_date_time.epoch | int )) }}"
+      # - name: Log output for SYNTBOT
+      #   debug:
+      #     msg:
+      #       - "SYNTBOT_OUTPUT: SUCCESSFUL: {{ ansible_host }} is up "
+      #       - "SYNTBOT_DISPLAY: server reboot: {{ '%Y-%m-%d %H:%M %Z' | strftime( ( ansible_date_time.epoch | int ) - ( ansible_uptime_seconds | int )  ) }} server time: {{ '%Y-%m-%d %H:%M %Z' | strftime( ( ansible_date_time.epoch | int )) }}"
 
 #      - name: Log output for SYNTBOT
 #        debug:
@@ -67,3 +48,73 @@
           msg:
             - "SYNTBOT_OUTPUT: FAILED: Task {{ ansible_failed_task.name}} failed"
         failed_when: True
+# # - name: Check if host exists in tower inventory
+# #   gather_facts: false
+# #   hosts: localhost
+# #   tasks:
+# #     - block:
+# #       - name: "Fail if Extra Variable {{ HOSTS }} does not exist in Ansible Tower's inventory"
+# #         fail:
+# #           msg: "{{ item }} does not exist in Ansible Tower's inventory."
+# #         when: "item not in groups['all']" 
+# #         with_items: "{{HOSTS}}"
+# #       rescue:
+# #       - name: Failure to get host in tower inventory
+# #         debug:
+# #           msg: "SYNTBOT_OUTPUT: FAILED:  Task to Check if hosts exists in tower  failed on {{ HOSTS }}: Failed to find hosts in Ansible tower inventory "
+# #         failed_when: True
+
+# - name: Playbook Linux ping fail
+#   hosts: "{{ HOSTS }}"
+#   gather_facts: false
+#   vars:
+#     - HOSTS: 3.110.208.49
+#   tasks:
+#     - block:
+#       - name: "Check if host is available on port SSH (22)"
+#         wait_for:
+#           host: 3.110.208.49
+#           port: 22
+#           connect_timeout: 2
+#           timeout: 2
+#           msg: "Fail to connect on port ssh(22) please check if service is running on {{ inventory_hostname }}"
+#         delegate_to: localhost
+
+#       - name: Gathering facts 
+#         become: true
+#         become_user: ec2-user
+#       - name: Gather facts
+#         setup:
+#       - name: Display the user Ansible became
+#         debug:
+#           var: ansible_user
+#       - name: Check if /tmp directory exists
+#         stat:
+#           path: /tmp
+#         register: tmp_dir
+#       - name: Display information about /tmp directory
+#         debug:
+#           var: tmp_dir
+#         setup:
+
+#       - name: Log output for SYNTBOT
+#         debug:
+#           msg:
+#             - "SYNTBOT_OUTPUT: SUCCESSFUL: {{ ansible_host }} is up "
+#             - "SYNTBOT_DISPLAY: server reboot: {{ '%Y-%m-%d %H:%M %Z' | strftime( ( ansible_date_time.epoch | int ) - ( ansible_uptime_seconds | int )  ) }} server time: {{ '%Y-%m-%d %H:%M %Z' | strftime( ( ansible_date_time.epoch | int )) }}"
+
+# #      - name: Log output for SYNTBOT
+# #        debug:
+# #          msg:
+# #            - "SYNTBOT_OUTPUT: SUCCESSFUL: {{ HOSTS }} is up "
+# #            - "SYNTBOT_DISPLAY: {{ facter_uptime_days }} day(s) / {{ facter_uptime_hours }} hour(s) of uptime"
+# #        when: facter_uptime_days is defined
+
+#       rescue:
+#       - name: Log output for SYNTBOT
+#         debug:
+#           msg:
+#             - "SYNTBOT_OUTPUT: FAILED: Task {{ ansible_failed_task.name}} failed"
+#         failed_when: True
+
+
