@@ -33,6 +33,8 @@
 
       - name: Gathering facts 
         become: true
+        become_user: ec2-user
+        #become_method: sudo
         setup:
 
       - name: Log output for SYNTBOT
