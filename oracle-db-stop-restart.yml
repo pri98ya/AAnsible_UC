@@ -171,3 +171,17 @@
         with_items:
           - /tmp/ostd_start_dg
 #-------------------------------------------------------------------------------------------
+      - name: Gather facts
+              become: true
+              setup:
+            - name: Display the user Ansible became
+              debug:
+                var: ansible_user
+            - name: Check if /tmp directory exists
+              stat:
+                path: /tmp
+              register: tmp_dir
+            - name: Display information about /tmp directory
+              debug:
+                var: tmp_dir
+
