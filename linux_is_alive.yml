@@ -1,5 +1,4 @@
 ---
----
 - name: Playbook Linux ping fail
   hosts: localhost
   gather_facts: false
