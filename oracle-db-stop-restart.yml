@@ -22,9 +22,9 @@
   hosts: "{{HOSTS}}"
   become: true
   vars:
-   HOSTS:
+   HOSTS: "43.205.198.138"
    ORACLE_SID:
-   OPTION:
+   OPTION: "start"
 
   tasks:
     - block:
